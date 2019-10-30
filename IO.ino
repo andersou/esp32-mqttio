@@ -6,7 +6,7 @@ uint8_t saidas[] = {2, 4, 5, 18, 19, 21, 22, 23};
 //Estrutura para capturar borda e debounce
 struct porta_t {
   uint8_t ultimoEstado;
-  uint8_t ultimoMillis;
+  long ultimoMillis;
 };
 
 typedef struct porta_t PORTA;
@@ -29,12 +29,6 @@ void processaReqMQTT(const char* topic, const char* payload) {
   Serial.println("Processando msg");
 
   char saida = topic[strlen(topic)-1] -'0';
-  Serial.println(saida);
-  Serial.println(payload);
-  Serial.println(topic);
-  Serial.println(strlen(topic));
-
-
   if ((saida >= 0) && (saida < N_SAI) ) {
     digitalWrite(saidas[saida], strcmp(payload, "ON") == 0 ? LOW : HIGH);
     Serial.println("FOI");
@@ -53,9 +47,9 @@ void loopIO() {
   for (int i = 0; i < N_ENT; i++) {
     sinal = digitalRead(entradas[i]);
     p = &p_entrada[i];
-    if ((p->ultimoEstado != sinal) && (m - p->ultimoMillis) > DEBOUNCE_ENTRADA) {
+    if ((p->ultimoEstado != sinal) && ((m - p->ultimoMillis) > DEBOUNCE_ENTRADA)) {
       //publica!
-      publicaReqMQTT(i, sinal);
+      publicaReqMQTT(i, sinal);      
       p->ultimoEstado = sinal;
       p->ultimoMillis = m;
     }

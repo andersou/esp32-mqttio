@@ -11,8 +11,40 @@ struct porta_t {
 
 typedef struct porta_t PORTA;
 PORTA p_entrada[N_ENT];
+PORTA p_saida[N_SAI];
+
 
 extern AsyncMqttClient mqttClient;
+
+
+void setSaida(uint8_t saida, uint8_t level) {
+  p_saida[saida].ultimoEstado = level;
+  digitalWrite(saidas[saida], level);
+}
+uint8_t getSaida(uint8_t saida) {
+  return p_saida[saida].ultimoEstado;
+}
+void processaReqMQTT(const char* topic, const char* payload, size_t len) {
+  char saida = topic[strlen(topic) - 1] - '0';
+  if ((saida >= 0) && (saida < N_SAI) ) {
+    setSaida(saida, strncmp(payload, "ON", len) == 0 ? LOW : HIGH);
+  }
+}
+String topicoEntrada = "/"MQTT_HOSTNAME"/entradas/";
+String topicoSaida = "/"MQTT_HOSTNAME"/saidas/";
+void publicaReqMQTT(uint8_t entOuSai, uint8_t idx, uint8_t level) {
+  String topico = entOuSai ? topicoEntrada : topicoSaida + String(idx);
+  if (mqttClient.connected()) {
+    mqttClient.publish(topico.c_str(), 1, true, level ? "ON" : "OFF");
+  }
+}
+
+
+void setupSaidasOnMQTT() {
+  for (int i = 0; i < N_SAI; i++) {
+    publicaReqMQTT(false, i, !getSaida(i));
+  }
+}
 void setupIO() {
   for (int i = 0; i < N_ENT; i++) {
     pinMode(entradas[i], INPUT);
@@ -22,24 +54,10 @@ void setupIO() {
   }
   for (int i = 0; i < N_SAI; i++) {
     pinMode(saidas[i], OUTPUT);
-    digitalWrite(saidas[i], HIGH);
+    setSaida(i, HIGH);
   }
 }
-void processaReqMQTT(const char* topic, const char* payload) {
-  Serial.println("Processando msg");
 
-  char saida = topic[strlen(topic)-1] -'0';
-  if ((saida >= 0) && (saida < N_SAI) ) {
-    digitalWrite(saidas[saida], strcmp(payload, "ON") == 0 ? LOW : HIGH);
-    Serial.println("FOI");
-  }
-}
-void publicaReqMQTT(uint8_t idx, uint8_t level) {
-  String topico = "/"MQTT_HOSTNAME"/entrada/" + String(idx);
-  if (mqttClient.connected()) {
-    mqttClient.publish(topico.c_str(), 1, true, level ? "ON" : "OFF");
-  }
-}
 void loopIO() {
   uint8_t sinal;
   PORTA *p;
@@ -49,7 +67,7 @@ void loopIO() {
     p = &p_entrada[i];
     if ((p->ultimoEstado != sinal) && ((m - p->ultimoMillis) > DEBOUNCE_ENTRADA)) {
       //publica!
-      publicaReqMQTT(i, sinal);      
+      publicaReqMQTT(true, i, sinal);
       p->ultimoEstado = sinal;
       p->ultimoMillis = m;
     }

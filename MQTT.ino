@@ -37,8 +37,11 @@ void onMqttConnect(bool sessionPresent) {
   Serial.println("Connected to MQTT.");
   Serial.print("Session present: ");
   Serial.println(sessionPresent);
+  
+  setupSaidasOnMQTT();
   mqttClient.subscribe("/"MQTT_HOSTNAME"/saidas/#", 0);
   mqttClient.subscribe("/saidas/#", 0);
+  
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
@@ -64,7 +67,8 @@ void onMqttUnsubscribe(uint16_t packetId) {
 }
 
 void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-  processaReqMQTT(topic,payload);
+  Serial.println(len);
+  processaReqMQTT(topic,payload,len);
 }
 
 void onMqttPublish(uint16_t packetId) {

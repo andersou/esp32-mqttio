@@ -14,7 +14,7 @@ PORTA p_entrada[N_ENT];
 PORTA p_saida[N_SAI];
 
 
-extern AsyncMqttClient mqttClient;
+extern PubSubClient client;
 
 
 void setSaida(uint8_t saida, uint8_t level) {
@@ -34,8 +34,8 @@ String topicoEntrada = "/"MQTT_HOSTNAME"/entradas/";
 String topicoSaida = "/"MQTT_HOSTNAME"/saidas/";
 void publicaReqMQTT(uint8_t entOuSai, uint8_t idx, uint8_t level) {
   String topico = entOuSai ? topicoEntrada : topicoSaida + String(idx);
-  if (mqttClient.connected()) {
-    mqttClient.publish(topico.c_str(), 1, true, level ? "ON" : "OFF");
+  if (client.connected()) {
+    client.publish(topico.c_str(),level ? "ON" : "OFF");
   }
 }
 

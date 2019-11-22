@@ -1,9 +1,5 @@
 #include <WiFi.h>
-extern "C" {
-#include "freertos/FreeRTOS.h"
-#include "freertos/timers.h"
-}
-#include <AsyncMqttClient.h>
+#include <PubSubClient.h>
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
@@ -13,7 +9,14 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   Serial.println("Bootando");
-  
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(5000);
+    ESP.restart();
+  }
   setupMQTT();
   setupOTA();
   setupIO();
@@ -22,5 +25,5 @@ void setup() {
 void loop() {
   loopOTA();
   loopIO();
-  
+  loopMQTT();
 }

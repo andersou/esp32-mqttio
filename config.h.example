@@ -2,9 +2,11 @@
 #define WIFI_PASSWORD "senha"
 
 #define MQTT_CLIENT "homeIO"
+#define MQTT_HOSTNAME MQTT_CLIENT
 #define MQTT_SERVER "192.168.1.10"
 #define MQTT_PORT 1883
 
 #define DEBOUNCE_ENTRADA 100 //ms
+#define MIN_PRESSED 50 //ms
 
 #define OTA_PASSWORD "senha"

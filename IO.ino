@@ -6,7 +6,8 @@ uint8_t saidas[] = {2, 4, 5, 18, 19, 21, 22, 23};
 //Estrutura para capturar borda e debounce
 struct porta_t {
   uint8_t ultimoEstado;
-  long ultimoMillis;
+  long debounceMillis;
+  long pressedMillis;
 };
 
 typedef struct porta_t PORTA;
@@ -33,9 +34,9 @@ void processaReqMQTT(const char* topic, const char* payload, size_t len) {
 String topicoEntrada = "/"MQTT_HOSTNAME"/entradas/";
 String topicoSaida = "/"MQTT_HOSTNAME"/saidas/";
 void publicaReqMQTT(uint8_t entOuSai, uint8_t idx, uint8_t level) {
-  String topico = entOuSai ? topicoEntrada : topicoSaida + String(idx);
+  String topico = (entOuSai ? topicoEntrada : topicoSaida) + String(idx);
   if (client.connected()) {
-    client.publish(topico.c_str(),level ? "ON" : "OFF");
+    client.publish(topico.c_str(), level ? "ON" : "OFF");
   }
 }
 
@@ -49,7 +50,8 @@ void setupIO() {
   for (int i = 0; i < N_ENT; i++) {
     pinMode(entradas[i], INPUT);
     PORTA &p = p_entrada[i];
-    p.ultimoMillis = 0;
+    p.pressedMillis = 0;
+    p.debounceMillis = 0;
     p.ultimoEstado = HIGH;
   }
   for (int i = 0; i < N_SAI; i++) {
@@ -65,11 +67,27 @@ void loopIO() {
   for (int i = 0; i < N_ENT; i++) {
     sinal = digitalRead(entradas[i]);
     p = &p_entrada[i];
-    if ((p->ultimoEstado != sinal) && ((m - p->ultimoMillis) > DEBOUNCE_ENTRADA)) {
-      //publica!
-      publicaReqMQTT(true, i, sinal);
-      p->ultimoEstado = sinal;
-      p->ultimoMillis = m;
+    //se sinal mudou
+    if ((p->ultimoEstado != sinal) ) {
+      if (((m - p->debounceMillis) > DEBOUNCE_ENTRADA)) {
+        if (!p->pressedMillis) //se ainda nao definiu o pressionamento inicial
+          p->pressedMillis = m;
+      }
+      //ainda nao atualizei o ultimo estado
+      //entao verifico se foi pressionado por tempo suficiente
+      if (( m - p->pressedMillis) > MIN_PRESSED) {
+        //publica!
+        //e atualizo variaveis (reseto millis e seto debounce)
+        publicaReqMQTT(true, i, sinal);
+        p->ultimoEstado = sinal;
+        p->debounceMillis = m;
+        p->pressedMillis = 0;
+      }
+
+    } else {
+      p->pressedMillis = 0;
     }
+
+
   }
 }
